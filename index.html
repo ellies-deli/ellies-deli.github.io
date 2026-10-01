@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ellie's Deli · Coyle Hall, Notre Dame · Order Online</title>
+<meta name="description" content="Order sandwiches and drinks online from Ellie's Deli in Coyle Hall at the University of Notre Dame. Order ahead, see the line, and pay at pickup.">
+<meta property="og:title" content="Ellie's Deli · Coyle Hall, Notre Dame">
+<meta property="og:description" content="Order sandwiches and drinks from Ellie's Deli in Coyle Hall. Order ahead, pay at pickup.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#14213d">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Restaurant","name":"Ellie's Deli","alternateName":["Ellies Deli","Coyle Ellie's Deli","Ellie's Deli Coyle Hall"],"servesCuisine":"Sandwiches","description":"Student-run deli in Coyle Hall at the University of Notre Dame. Order online and pick up at the deli.","address":{"@type":"PostalAddress","streetAddress":"Coyle Hall, University of Notre Dame","addressLocality":"Notre Dame","addressRegion":"IN","postalCode":"46556","addressCountry":"US"},"acceptsReservations":false,"paymentAccepted":"Cash, Credit Card"}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="sign">
+  <div class="wrap">
+    <div class="brand">
+      <h1>Ellie's Deli</h1>
+      <p>Coyle Hall &middot; Notre Dame &middot; order ahead, pay at pickup</p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap">
+      <div class="shopstate closed" id="shopstate"><i></i><span id="shopstate-text">Connecting...</span></div>
+      <div class="shopstate" id="queuestate"><span id="queue-text">Checking the line...</span></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" id="tab-order" aria-selected="true" data-tab="order">Order</button>
+      <button role="tab" id="tab-mine" aria-selected="false" data-tab="mine">My order</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="view-order" class="grid">
+    <div id="menu"></div>
+    <aside class="ticket" id="ticket" aria-label="Your order">
+      <h2>Your order</h2>
+      <p class="sub" id="ticket-sub">Nothing added yet</p>
+      <p class="msg" id="ticket-queue" hidden></p>
+      <ul class="lines" id="lines"></ul>
+      <div class="empty" id="empty">Tap Add on any item to start.</div>
+      <div class="total"><span>Total</span><span class="price" id="total">$0.00</span></div>
+      <div class="field"><label for="f-email">Student email</label><input id="f-email" type="email" autocomplete="email" placeholder="netid@nd.edu"></div>
+      <div class="field"><label for="f-hall">Hall</label><select id="f-hall"></select></div>
+      <div class="field"><label for="f-name">Name</label><input id="f-name" autocomplete="name" placeholder="First and last name"></div>
+      <div class="field"><label for="f-time">Pickup time</label><select id="f-time"></select></div>
+      <div class="field"><label for="f-notes">Notes (optional)</label><textarea id="f-notes" rows="2" maxlength="300" placeholder="No onions, extra napkins..."></textarea></div>
+      <div class="field"><span style="font-size:13px; font-weight:700">How will you pay at pickup?</span>
+        <div class="chips" id="f-pay" role="group" aria-label="Payment method">
+          <button type="button" class="chip" data-pay="Cash" aria-pressed="false">Cash</button>
+          <button type="button" class="chip" data-pay="Card" aria-pressed="false">Card</button>
+        </div>
+      </div>
+      <button class="btn primary" id="place" style="width:100%" disabled>Place order</button>
+      <div class="msg" id="place-msg" hidden></div>
+      <p class="note">No online payment. You pay in person at Ellie's when you pick up.</p>
+    </aside>
+  </section>
+  <section id="view-mine" hidden></section>
+  <footer class="foot"><a href="kitchen.html">Staff login</a></footer>
+</main>
+
+<div class="cartbar" id="cartbar"><button class="btn primary" id="cartbar-btn"><span id="cartbar-n">0 items</span><span id="cartbar-total" class="price">$0.00</span></button></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

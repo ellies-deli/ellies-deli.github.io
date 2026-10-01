@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ellie's Kitchen</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="sign">
+  <div class="wrap">
+    <div class="brand">
+      <h1>Ellie's Kitchen</h1>
+      <p>Staff only &middot; live order board</p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap">
+      <div class="shopstate closed" id="shopstate"><i></i><span id="shopstate-text">Signed out</span></div>
+      <div class="shopstate"><span id="queue-text">&nbsp;</span></div>
+    </div>
+    <nav class="tabs" aria-hidden="true"></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="view-login" class="card login">
+    <h2>Staff sign in</h2>
+    <p class="hint">Use the staff account Ellie's gave you. Students order from the main page.</p>
+    <form id="login-form" novalidate>
+      <div class="field"><label for="l-email">Email</label><input id="l-email" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="l-pass">Password</label><input id="l-pass" type="password" autocomplete="current-password" required></div>
+      <button class="btn primary" id="l-btn" type="submit" style="width:100%">Sign in</button>
+    </form>
+    <p class="msg err" id="l-msg" hidden></p>
+    <p class="note"><a href="index.html">Back to ordering</a></p>
+  </section>
+
+  <section id="view-board" hidden>
+    <div class="toolbar">
+      <button class="btn primary" id="shop-toggle" type="button">Open the deli for orders</button>
+      <span class="hint" id="who"></span>
+      <span class="spacer"></span>
+      <button class="btn small" id="sound-toggle" type="button" aria-pressed="true">Sound on</button>
+      <button class="btn small" id="logout" type="button">Sign out</button>
+    </div>
+    <div class="kitchen" id="board"></div>
+  </section>
+</main>
+
+<script type="module" src="kitchen.js"></script>
+</body>
+</html>

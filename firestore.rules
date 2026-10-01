@@ -1,0 +1,62 @@
+rules_version = '2';
+
+// Paste this whole file into Firebase console > Firestore Database > Rules, then Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // Staff = any login whose user UID has a document in the "staff" collection.
+    function isStaff() {
+      return signedIn() && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+
+    function shopOpen() {
+      return get(/databases/$(database)/documents/settings/shop).data.open == true;
+    }
+
+    // Open/closed switch: everyone can read it, only staff can flip it.
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    // Staff list: added by hand in the console. A user can only check their own entry.
+    match /staff/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Full orders (name, email, hall, items). A student sees only their own; staff see all.
+    match /orders/{orderId} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isStaff());
+      allow create: if signedIn()
+        && shopOpen()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.email is string
+        && request.resource.data.email.matches('[^@ ]+@nd[.]edu')
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.hall is string
+        && request.resource.data.payment in ['Cash', 'Card']
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 30;
+      allow update, delete: if isStaff();
+    }
+
+    // Anonymous line positions (time + status only) so everyone can see how many orders are ahead.
+    match /line/{orderId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['createdAt', 'status'])
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/orders/$(orderId)).data.uid == request.auth.uid;
+      allow update, delete: if isStaff();
+    }
+  }
+}
