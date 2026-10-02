@@ -34,8 +34,7 @@ async function emailOrderReady(o) {
       order_code: o.code,
       items,
       total: money(o.totalCents),
-      payment: o.payment || "",
-      pickup: o.pickup || ""
+      payment: o.payment || ""
     });
     await updateDoc(doc(db, "orders", o.id), { emailedAt: serverTimestamp() });
   } catch (e) {
@@ -129,7 +128,7 @@ function renderBoard() {
       const placed = new Date(ms(o)).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       col.append(el("article", { class: "kcard " + st },
         el("header", {}, el("span", { text: "#" + o.code + " " + o.name }), el("span", { class: "price", text: money(o.totalCents) })),
-        el("div", { class: "meta", text: (o.hall || "") + " · Pickup " + o.pickup + " · Pays " + (o.payment || "?") }),
+        el("div", { class: "meta", text: (o.hall || "") + " · Pays " + (o.payment || "?") }),
         el("div", { class: "meta", text: (o.email || "") + " · placed " + placed + (o.emailedAt ? " · emailed" : "") }),
         itemsList(o),
         o.notes ? el("div", { class: "hint", text: "Note: " + o.notes }) : null,

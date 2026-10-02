@@ -129,17 +129,6 @@ function renderCart() {
 }
 
 /* ---- form ---- */
-function pickupSlots() {
-  const sel = $("f-time"); sel.textContent = "";
-  sel.append(el("option", { value: "ASAP", text: "As soon as possible" }));
-  const t = new Date(); t.setSeconds(0, 0);
-  t.setMinutes(Math.ceil((t.getMinutes() + 20) / 15) * 15);
-  for (let i = 0; i < 8; i++) {
-    const label = t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    sel.append(el("option", { value: label, text: label }));
-    t.setMinutes(t.getMinutes() + 15);
-  }
-}
 {
   const hall = $("f-hall");
   hall.append(el("option", { value: "", text: "Select your hall" }));
@@ -184,7 +173,6 @@ $("place").addEventListener("click", async () => {
     email: $("f-email").value.trim().toLowerCase(),
     hall: $("f-hall").value,
     payment,
-    pickup: $("f-time").value,
     notes: $("f-notes").value.trim().slice(0, 300),
     items: cart.map((l) => ({ name: l.name, mods: l.mods, cents: l.cents, qty: l.qty })),
     totalCents: cartTotal(),
@@ -235,7 +223,7 @@ function renderMine() {
   root.append(el("div", { class: "card" },
     el("div", { class: "hint", text: activeOrder() ? "Your ticket" : "Last order" }),
     el("h3", { text: "#" + o.code + " · " + o.name }),
-    el("p", { class: "hint", text: "Pickup: " + o.pickup + " · Paying by " + (o.payment || "").toLowerCase() + " at Ellie's" }),
+    el("p", { class: "hint", text: "Paying by " + (o.payment || "").toLowerCase() + " at Ellie's" }),
     el("div", { class: "steps" }, steps.map((s, i) => el("span", { class: i <= at ? "on" : "", text: STATUS_LABEL[s] }))),
     ahead !== null ? el("p", { class: "msg", text: (o.status === "making" ? "Being made now." : ahead === 0 ? "You're next up." : plural(ahead, "order") + " ahead of you.")
       + " Ready in about " + (o.status === "making" ? Math.max(1, Math.round(avgPrep)) : waitMin(ahead)) + " min." }) : null,
@@ -268,7 +256,7 @@ function renderShop() {
 
 /* ---- Firebase ---- */
 let db = null;
-renderMenu(); pickupSlots(); renderCart(); renderMine(); renderShop();
+renderMenu(); renderCart(); renderMine(); renderShop();
 $("email-note").hidden = !emailOn;
 
 if (firebaseConfig.apiKey === "PASTE_HERE") {
