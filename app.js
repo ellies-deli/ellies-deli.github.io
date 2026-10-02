@@ -165,6 +165,7 @@ function updatePlace() {
 
 $("place").addEventListener("click", async () => {
   placing = true; $("place").disabled = true; delete $("place-msg").dataset.sticky;
+  unlockAudio(); askNotifications();
   setMsg("Sending your order...", false);
   const ref = doc(collection(db, "orders"));
   const order = {
@@ -200,6 +201,46 @@ $("place").addEventListener("click", async () => {
   }
 });
 
+/* ---- "your order is ready" alert: sound, vibration, notification (while this page is open) ---- */
+let audioCtx = null;
+function unlockAudio() {
+  // Browsers only allow sound after the person has tapped something on the page.
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (e) {}
+}
+document.addEventListener("pointerdown", unlockAudio);
+function askNotifications() {
+  try {
+    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  } catch (e) {}
+}
+function readyAlert(o) {
+  try {
+    if (audioCtx) {
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      [784, 988, 1319].forEach((f, i) => {
+        const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+        osc.frequency.value = f; osc.connect(g); g.connect(audioCtx.destination);
+        const t = audioCtx.currentTime + i * 0.22;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+        osc.start(t); osc.stop(t + 0.21);
+      });
+    }
+  } catch (e) {}
+  try { if (navigator.vibrate) navigator.vibrate([250, 120, 250, 120, 400]); } catch (e) {}
+  try {
+    if ("Notification" in window && Notification.permission === "granted") {
+      const title = "Your Ellie's order is ready";
+      const opts = { body: "Order #" + o.code + " · Head to Ellie's in Coyle Hall.", icon: "favicon.svg", tag: "ellies-ready" };
+      try { new Notification(title, opts); }
+      catch (e) { if (navigator.serviceWorker) navigator.serviceWorker.ready.then((r) => r.showNotification(title, opts)).catch(() => {}); }
+    }
+  } catch (e) {}
+}
+
 /* ---- tabs ---- */
 function setTab(t) {
   currentTab = t;
@@ -227,7 +268,7 @@ function renderMine() {
     el("div", { class: "steps" }, steps.map((s, i) => el("span", { class: i <= at ? "on" : "", text: STATUS_LABEL[s] }))),
     ahead !== null ? el("p", { class: "msg", text: (o.status === "making" ? "Being made now." : ahead === 0 ? "You're next up." : plural(ahead, "order") + " ahead of you.")
       + " Ready in about " + (o.status === "making" ? Math.max(1, Math.round(avgPrep)) : waitMin(ahead)) + " min." }) : null,
-    waiting && emailOn ? el("p", { class: "hint", text: "We'll email " + o.email + " when it's ready." }) : null,
+    waiting ? el("p", { class: "hint", text: "Keep this page open and you'll hear a sound and get a notification when it's ready." + (emailOn ? " We'll also email " + o.email + "." : "") }) : null,
     o.status === "ready" ? el("p", { class: "status ready", text: "Ready for pickup. Head to Ellie's." }) : null,
     o.status === "cancelled" ? el("p", { class: "msg err", text: "Ellie's cancelled this order. Ask at the counter if you're not sure why." }) : null,
     itemsList(o),
@@ -235,7 +276,7 @@ function renderMine() {
     o.notes ? el("p", { class: "hint", text: "Notes: " + o.notes }) : null));
   // Flag the browser tab when the order turns ready, so a student on another tab notices.
   document.title = o.status === "ready" ? "READY · Ellie's Deli" : "Ellie's Deli";
-  if (o.status === "ready" && lastStatus && lastStatus !== "ready") setTab("mine");
+  if (o.status === "ready" && lastStatus && lastStatus !== "ready") { setTab("mine"); readyAlert(o); }
   lastStatus = o.status;
 }
 
