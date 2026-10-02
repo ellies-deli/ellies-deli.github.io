@@ -5,7 +5,7 @@
 
 Son dos páginas:
 - `index.html`: donde los estudiantes hacen su pedido. Ponen su correo ND, su hall, nombre, hora de recojo, notas y si pagan en efectivo o con tarjeta, y ven su lugar en la cola.
-- `kitchen.html`: el tablero del personal, protegido con usuario y contraseña. Solo las cuentas del staff pueden ver los pedidos, marcarlos como listos o abrir y cerrar el deli.
+- `kitchen.html`: el tablero del personal, protegido con usuario y contraseña. Solo las cuentas del staff pueden ver los pedidos, marcarlos como listos, abrir y cerrar el deli, marcar productos agotados, cambiar el horario y ver el resumen del turno.
 
 Firebase y GitHub son gratis (no piden tarjeta). Lo único que cuesta es el dominio propio, unos $10–12 al año. Te toma unos 30 minutos, más la espera para que se conecte el dominio.
 
@@ -84,13 +84,57 @@ Google suele tardar **entre unos días y dos semanas** en mostrar una página nu
 27. Haz clic en **Start making** y luego en **Mark ready**. Tu celular debe mostrar "Ready for pickup" y el título de la pestaña cambia a READY.
 28. Haz clic en **Picked up**. ¡Listo, ya está funcionando! Comparte el link principal o conviértelo en un código QR para pegarlo en Ellie's.
 
+## Parte 6: Correos de "tu pedido está listo" (EmailJS, gratis)
+
+Cuando el staff hace clic en **Mark ready**, la cocina le manda un correo al estudiante. EmailJS es gratis hasta unos 200 correos al mes (revisa el límite actual en su página de precios). Su página está en inglés.
+
+> Te recomiendo crear un Gmail solo para el deli (ej. `elliesdeli.coyle@gmail.com`) y usarlo como remitente, para no mandar los correos desde tu cuenta personal.
+
+1. Entra a **emailjs.com** → **Sign Up** y crea tu cuenta gratis.
+2. **Email Services → Add New Service → Gmail → Connect Account**. Elige el Gmail que va a mandar los correos y acepta el permiso de "enviar correos en tu nombre". Luego **Create Service**. Copia el **Service ID** (ej. `service_abc123`).
+3. **Email Templates → Create New Template**. Llena:
+   - **To Email:** `{{to_email}}`
+   - **From Name:** `Ellie's Deli`
+   - **Subject:** `Your Ellie's Deli order #{{order_code}} is ready`
+   - **Content** (bórralo y pega esto):
+     ```
+     Hi {{to_name}},
+
+     Your order #{{order_code}} is ready for pickup at Ellie's Deli in Coyle Hall.
+
+     {{items}}
+
+     Total: {{total}} (paying by {{payment}} at the counter)
+
+     See you soon!
+     Ellie's Deli
+     ```
+   - **Save**. Copia el **Template ID** (está en la pestaña Settings del template, ej. `template_xyz789`).
+4. **Account → General**: copia la **Public Key**.
+5. **Account → Security**: si aparece una opción para limitar los dominios o la frecuencia de envíos, actívala y pon `ellies-deli.github.io`. Así nadie más puede usar tu cuenta para mandar correos.
+6. Abre `emailjs-config.js` y reemplaza los tres `PASTE_HERE` con la Public Key, el Service ID y el Template ID. (O mándaselos a Claude y te devuelve el archivo listo.) Sube el archivo a GitHub.
+7. Prueba: haz un pedido con tu correo @nd.edu y márcalo como listo en la cocina. En la tarjeta del pedido aparece "emailed" cuando el correo salió. Si falla, la cocina muestra un aviso en rojo.
+
+## Subir cambios a GitHub
+
+Cada vez que cambies un archivo (el menú, la configuración de EmailJS, o una versión nueva que te pase Claude):
+
+1. Entra a tu repositorio `ellies-deli.github.io` en GitHub.
+2. **Add file → Upload files**.
+3. Arrastra los archivos nuevos. Los que tengan el mismo nombre reemplazan a los viejos.
+4. **Commit changes**. En 1–2 minutos la página ya tiene los cambios (recarga con Cmd+Shift+R si no los ves).
+
 ---
 
 ## En cada turno
 
 - Abre `kitchen.html` en la laptop o tablet del deli e inicia sesión.
-- Haz clic en **Open the deli for orders** al empezar el turno y en **Stop taking orders** al terminar.
-- Mueve cada pedido: **Start making → Mark ready → Picked up**. El conteo de la cola que ven los estudiantes solo incluye pedidos en New y Making, así que mover los pedidos a tiempo mantiene el número correcto. Usa **Cancel order** para quienes no recogen o para errores.
+- Haz clic en **Open the deli for orders** al empezar el turno. Esto también empieza un **resumen del turno** nuevo.
+- Mueve cada pedido: **Start making → Mark ready → Picked up**. Usa **Cancel order** para quienes no recogen o para errores.
+  - El conteo de la cola y el **tiempo estimado** que ven los estudiantes salen de estos botones. El tiempo es el promedio entre "Start making" y "Mark ready" de los últimos 10 pedidos, así que hacer clic a tiempo lo mantiene correcto.
+- Si se acaba algo, ve a **Menu & hours** y toca el producto para marcarlo **Sold out**. Los estudiantes lo ven en gris al instante. Tócalo otra vez cuando vuelva.
+- En **Menu & hours** también puedes escribir el **horario** (ej. `Sun–Thu 9 PM – 12 AM`). Los estudiantes lo ven cuando el deli está cerrado.
+- Al cerrar, haz clic en **Stop taking orders** y abre **Shift summary**: ahí está lo cobrado, cuánto efectivo debería haber en caja, cuánto con tarjeta, lo que sigue abierto y los productos más vendidos.
 
 ## Cambiar el menú
 

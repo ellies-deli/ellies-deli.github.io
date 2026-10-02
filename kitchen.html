@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
 </head>
 <body>
 <header class="sign">
@@ -47,7 +48,43 @@
       <button class="btn small" id="sound-toggle" type="button" aria-pressed="true">Sound on</button>
       <button class="btn small" id="logout" type="button">Sign out</button>
     </div>
-    <div class="kitchen" id="board"></div>
+    <div class="chips viewtabs" role="group" aria-label="Kitchen sections">
+      <button type="button" class="chip" id="v-orders" aria-pressed="true">Orders</button>
+      <button type="button" class="chip" id="v-menu" aria-pressed="false">Menu &amp; hours</button>
+      <button type="button" class="chip" id="v-summary" aria-pressed="false">Shift summary</button>
+    </div>
+    <div id="alerts"></div>
+
+    <div id="board-wrap">
+      <p class="hint" id="email-state"></p>
+      <div class="kitchen" id="board"></div>
+    </div>
+
+    <div id="menu-admin" hidden>
+      <form class="card" id="hours-form">
+        <div class="field">
+          <label for="hours-input">Hours students see when the deli is closed</label>
+          <input id="hours-input" maxlength="80" placeholder="e.g. Sun–Thu 9 PM – 12 AM">
+        </div>
+        <div class="toolbar" style="margin:0">
+          <button class="btn primary small" type="submit">Save hours</button>
+          <span class="hint" id="hours-msg" role="status"></span>
+        </div>
+      </form>
+      <div class="card">
+        <h2 class="card-h">Sold out</h2>
+        <p class="hint">Tap an item to mark it sold out. Students see it greyed out right away. Tap again when it's back.</p>
+        <div id="menu-list"></div>
+      </div>
+    </div>
+
+    <div id="summary" hidden>
+      <div class="card">
+        <h2 class="card-h">Shift summary</h2>
+        <p class="hint" id="summary-since"></p>
+        <div id="summary-body"></div>
+      </div>
+    </div>
   </section>
 </main>
 

@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, doc, query, where, onSnapshot, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
+import { emailjsConfig } from "./emailjs-config.js";
 import { MENU, BREADS, ADDONS, HALLS, STATUS_LABEL, money, plural, ms, el, itemsList } from "./menu.js";
 
 const $ = (id) => document.getElementById(id);
@@ -23,6 +24,11 @@ let line = null;            // anonymous queue: [{id, createdAt, status}]
 let payment = "";
 let currentTab = "order";
 let lastStatus = null;
+let soldOut = new Set();    // item ids and "addon:<id>" the staff marked sold out
+let hours = "";             // shown when the deli is closed
+let avgPrep = 4;            // minutes per order, shared by the kitchen (default until real data)
+const emailOn = emailjsConfig.publicKey !== "PASTE_HERE";
+const waitMin = (ordersAhead) => Math.max(2, Math.round((ordersAhead + 1) * avgPrep));
 
 const activeOrder = () => myOrders.find((o) => o.status !== "done" && o.status !== "cancelled") || null;
 const aheadOf = (o) => (line || []).filter((x) => x.id !== o.id && ms(x) < ms(o)).length;
@@ -58,6 +64,8 @@ function itemCard(it) {
   if (it.sandwich) {
     opts.append(chipGroup("Bread", BREADS, (v) => v === bread, (v) => { bread = v; }));
     opts.append(chipGroup("Add-ons", ADDONS, (v) => addons.has(v.id), (v) => { addons.has(v.id) ? addons.delete(v.id) : addons.add(v.id); }));
+    // Sold-out add-ons can't be picked.
+    opts.querySelectorAll(".chips")[1].querySelectorAll(".chip").forEach((c, i) => { if (soldOut.has("addon:" + ADDONS[i].id)) { c.disabled = true; c.title = "Sold out"; } });
   }
   if (it.choices) opts.append(chipGroup("Choose one", it.choices, (v) => v === choice, (v) => { choice = v; }));
 
@@ -69,16 +77,18 @@ function itemCard(it) {
     if (it.sandwich) mods.push(bread);
     if (choice) mods.push(choice);
     addons.forEach((id) => mods.push("+ " + ADDONS.find((a) => a.id === id).name));
-    addToCart({ name: it.name, mods, cents: cardPrice() });
+    addToCart({ itemId: it.id, addonIds: [...addons], name: it.name, mods, cents: cardPrice() });
     addons.clear(); groups.forEach((g) => g()); priceEl.textContent = money(cardPrice());
     opts.hidden = true; addBtn.textContent = "Customize";
   });
   opts.append(confirm);
   addBtn.addEventListener("click", () => {
-    if (!needsOpts) { addToCart({ name: it.name, mods: [], cents: it.cents }); return; }
+    if (!needsOpts) { addToCart({ itemId: it.id, addonIds: [], name: it.name, mods: [], cents: it.cents }); return; }
     opts.hidden = !opts.hidden; addBtn.textContent = opts.hidden ? "Customize" : "Close";
   });
-  return el("article", { class: "item" },
+  const out = soldOut.has(it.id);
+  if (out) { addBtn.disabled = true; addBtn.textContent = "Sold out"; }
+  return el("article", { class: "item" + (out ? " soldout" : "") },
     el("div", { class: "item-top" },
       el("div", { style: "min-width:0" }, el("h3", { text: it.name }), it.desc ? el("p", { text: it.desc }) : null),
       el("div", { style: "text-align:right; display:grid; gap:8px; justify-items:end" }, priceEl, addBtn)),
@@ -92,6 +102,7 @@ function addToCart(lineItem) {
   if (found) found.qty += 1; else cart.push({ key, ...lineItem, qty: 1 });
   renderCart();
 }
+const lineSoldOut = (l) => soldOut.has(l.itemId) || (l.addonIds || []).some((a) => soldOut.has("addon:" + a));
 const cartTotal = () => cart.reduce((s, l) => s + l.cents * l.qty, 0);
 function renderCart() {
   const ul = $("lines"); ul.textContent = "";
@@ -104,6 +115,7 @@ function renderCart() {
       el("span", { class: "nm", text: l.name }),
       el("span", { class: "price", text: money(l.cents * l.qty) }),
       l.mods.length ? el("span", { class: "mods", text: l.mods.join(" · ") }) : null,
+      lineSoldOut(l) ? el("span", { class: "mods", style: "color:var(--bad)", text: "Sold out. Remove to order." }) : null,
       el("span", { class: "qty" }, minus, el("span", { class: "price", text: String(l.qty) }), plus)));
   });
   const n = cart.reduce((s, l) => s + l.qty, 0);
@@ -154,10 +166,11 @@ function updatePlace() {
   let note = "";
   if (connError) note = connError;
   else if (!connected) note = "Connecting to Ellie's...";
-  else if (!shopOpen) note = "Ellie's Deli is closed right now. Check back soon.";
+  else if (!shopOpen) note = "Ellie's Deli is closed right now." + (hours ? " Hours: " + hours + "." : " Check back soon.");
+  else if (cart.some(lineSoldOut)) note = "Something in your order just sold out. Remove it to continue.";
   else if (activeOrder()) note = "You already have an order in progress. See the My order tab.";
   else if (email && !EMAIL_OK.test(email)) note = "Use your Notre Dame email (ends in @nd.edu).";
-  $("place").disabled = placing || !(ready && connected && shopOpen && !activeOrder());
+  $("place").disabled = placing || !(ready && connected && shopOpen && !activeOrder() && !cart.some(lineSoldOut));
   if (!placing && !$("place-msg").dataset.sticky) setMsg(note, false);
 }
 
@@ -224,7 +237,9 @@ function renderMine() {
     el("h3", { text: "#" + o.code + " · " + o.name }),
     el("p", { class: "hint", text: "Pickup: " + o.pickup + " · Paying by " + (o.payment || "").toLowerCase() + " at Ellie's" }),
     el("div", { class: "steps" }, steps.map((s, i) => el("span", { class: i <= at ? "on" : "", text: STATUS_LABEL[s] }))),
-    ahead !== null ? el("p", { class: "msg", text: ahead === 0 ? "You're next up." : plural(ahead, "order") + " ahead of you." }) : null,
+    ahead !== null ? el("p", { class: "msg", text: (o.status === "making" ? "Being made now." : ahead === 0 ? "You're next up." : plural(ahead, "order") + " ahead of you.")
+      + " Ready in about " + (o.status === "making" ? Math.max(1, Math.round(avgPrep)) : waitMin(ahead)) + " min." }) : null,
+    waiting && emailOn ? el("p", { class: "hint", text: "We'll email " + o.email + " when it's ready." }) : null,
     o.status === "ready" ? el("p", { class: "status ready", text: "Ready for pickup. Head to Ellie's." }) : null,
     o.status === "cancelled" ? el("p", { class: "msg err", text: "Ellie's cancelled this order. Ask at the counter if you're not sure why." }) : null,
     itemsList(o),
@@ -243,17 +258,18 @@ function renderQueue() {
   const n = line.length;
   chip.textContent = n === 0 ? "No line right now" : plural(n, "order") + " in line";
   note.hidden = !shopOpen || !!activeOrder();
-  note.textContent = n === 0 ? "No one is ahead of you. Your order starts right away." : plural(n, "order") + " ahead of you if you order now.";
+  note.textContent = (n === 0 ? "No line right now." : plural(n, "order") + " ahead of you if you order now.") + " Ready in about " + waitMin(n) + " min.";
 }
 function renderShop() {
   $("shopstate").classList.toggle("closed", !shopOpen);
-  $("shopstate-text").textContent = !connected ? (connError ? "Offline" : "Connecting...") : shopOpen ? "Open for orders" : "Closed";
+  $("shopstate-text").textContent = !connected ? (connError ? "Offline" : "Connecting...") : shopOpen ? "Open for orders" : (hours ? "Closed · " + hours : "Closed");
   renderQueue(); updatePlace();
 }
 
 /* ---- Firebase ---- */
 let db = null;
 renderMenu(); pickupSlots(); renderCart(); renderMine(); renderShop();
+$("email-note").hidden = !emailOn;
 
 if (firebaseConfig.apiKey === "PASTE_HERE") {
   connError = "This site isn't connected to its database yet. Paste the Firebase config into firebase-config.js.";
@@ -272,8 +288,14 @@ if (firebaseConfig.apiKey === "PASTE_HERE") {
     if (subscribed) return;
     subscribed = true;
     onSnapshot(doc(db, "settings", "shop"),
-      (s) => { shopOpen = s.exists() && s.data().open === true; renderShop(); },
+      (s) => { const d = s.exists() ? s.data() : {}; shopOpen = d.open === true; hours = d.hours || ""; renderShop(); },
       () => { shopOpen = false; renderShop(); });
+    onSnapshot(doc(db, "settings", "menu"),
+      (s) => { soldOut = new Set(s.exists() && Array.isArray(s.data().soldOut) ? s.data().soldOut : []); renderMenu(); renderCart(); },
+      () => {});
+    onSnapshot(doc(db, "settings", "stats"),
+      (s) => { const m = s.exists() ? Number(s.data().avgPrepMin) : NaN; if (m > 0 && m < 60) avgPrep = m; renderQueue(); renderMine(); },
+      () => {});
     onSnapshot(query(collection(db, "orders"), where("uid", "==", uid)),
       (snap) => {
         myOrders = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) })).sort((a, b) => ms(b) - ms(a));
